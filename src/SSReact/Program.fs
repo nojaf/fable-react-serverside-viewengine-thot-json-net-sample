@@ -12,7 +12,17 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.AspNetCore.Http
 open Giraffe
 open Thot.Json.Net
+open System
 
+module JsonExtraDecode =
+    let decodeNonEmptyString token =
+        Decode.string token
+        |> (fun res ->
+            match res with
+            | Ok s when (String.IsNullOrEmpty(s) |> not) -> Result.Ok s
+            | Ok _ -> Decode.DecoderError.BadPrimitive ("non empty string", token) |> Error
+            | Error e -> Error e
+        )
 // ---------------------------------
 // Models
 // ---------------------------------
@@ -32,7 +42,7 @@ module Dto =
                       Name = name
                       })
                 |> Decode.required "age" Decode.int
-                |> Decode.required "name" Decode.string
+                |> Decode.required "name" JsonExtraDecode.decodeNonEmptyString
         
         static member Encoder (person : Person) =
             Encode.object
